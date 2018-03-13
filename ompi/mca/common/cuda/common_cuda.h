@@ -42,7 +42,8 @@ OMPI_DECLSPEC void mca_common_cuda_unregister(void *ptr, char *msg);
 OMPI_DECLSPEC void mca_common_wait_stream_synchronize(mca_mpool_common_cuda_reg_t *rget_reg);
 
 OMPI_DECLSPEC int mca_common_cuda_memcpy(void *dst, void *src, size_t amount, char *msg,
-                                         struct mca_btl_base_descriptor_t *, int *done);
+                                         struct mca_btl_base_descriptor_t *, int *done,
+                                         void* stream);
 
 OMPI_DECLSPEC int mca_common_cuda_record_ipc_event(char *msg,
                                                struct mca_btl_base_descriptor_t *frag);
@@ -63,6 +64,9 @@ OMPI_DECLSPEC int mca_common_cuda_memhandle_matches(mca_mpool_common_cuda_reg_t 
 
 OMPI_DECLSPEC void mca_common_cuda_construct_event_and_handle(uint64_t **event, void **handle);
 OMPI_DECLSPEC void mca_common_cuda_destruct_event(uint64_t *event);
+
+OPAL_DECLSPEC void cuda_streamcreate(void** stream);
+OPAL_DECLSPEC void cuda_streamdestroy(void* stream);
 
 OMPI_DECLSPEC int cuda_getmemhandle(void *base, size_t, mca_mpool_base_registration_t *newreg,
                                     mca_mpool_base_registration_t *hdrreg);

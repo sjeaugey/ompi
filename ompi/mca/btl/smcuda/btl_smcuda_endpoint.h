@@ -49,6 +49,7 @@ struct mca_btl_base_endpoint_t {
     ompi_proc_t *proc_ompi;  /**< Needed for adding CUDA IPC support dynamically */
     enum ipcState ipcstate;  /**< CUDA IPC connection status */
     int ipctries;            /**< Number of times CUDA IPC connect was sent */
+    void* stream;            /**< Per peer CUDA stream */
 #endif /* OPAL_CUDA_SUPPORT */
 };
 

@@ -685,16 +685,10 @@ static void mca_btl_smcuda_send_cuda_ipc_ack(struct mca_btl_base_module_t* btl,
     MCA_BTL_SMCUDA_FIFO_WRITE(endpoint, endpoint->my_smp_rank,
                               endpoint->peer_smp_rank, (void *) VIRTUAL2RELATIVE(frag->hdr), false, true, rc);
 
-    /* Set state now that we have sent message */
-    if (ready) {
-        endpoint->ipcstate = IPC_ACKED;
-    } else {
-        endpoint->ipcstate = IPC_INIT;
-    }
-
     return;
 
 }
+
 /* This function is utilized to set up CUDA IPC support within the smcuda
  * BTL.  It handles smcuda specific control messages that are triggered
  * when GPU memory transfers are initiated. */
@@ -741,6 +735,7 @@ static void btl_smcuda_control(mca_btl_base_module_t* btl,
                                     mca_btl_smcuda_component.my_smp_rank,
                                     endpoint->peer_smp_rank);
                 mca_btl_smcuda_send_cuda_ipc_ack(btl, endpoint, 0);
+                endpoint->ipcstate = IPC_INIT;
                 return;
             }
 
@@ -805,6 +800,8 @@ static void btl_smcuda_control(mca_btl_base_module_t* btl,
                                     endpoint->my_smp_rank, mydevnum, endpoint->peer_smp_rank, 
                                     ctrlhdr.cudev);
                 mca_btl_smcuda_send_cuda_ipc_ack(btl, endpoint, 1);
+                endpoint->ipcstate = IPC_ACKED;
+                cuda_streamcreate(&endpoint->stream);
             }
         } else {
             OPAL_THREAD_UNLOCK(&endpoint->endpoint_lock);
@@ -822,6 +819,7 @@ static void btl_smcuda_control(mca_btl_base_module_t* btl,
                              ep_proc, (char *)&mca_btl_smcuda_component.cuda_ipc_output);
         assert(endpoint->ipcstate == IPC_SENT);
         endpoint->ipcstate = IPC_ACKED;
+        cuda_streamcreate(&endpoint->stream);
         break;
 
     case IPC_NOTREADY:

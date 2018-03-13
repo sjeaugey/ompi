@@ -120,7 +120,6 @@ bool mca_common_cuda_enabled = false;
 static bool mca_common_cuda_register_memory = true;
 static bool mca_common_cuda_warning = false;
 static opal_list_t common_cuda_memory_registrations;
-static CUstream ipcStream;
 static CUstream dtohStream;
 static CUstream htodStream;
 static CUstream memcpyStream;
@@ -678,14 +677,6 @@ static int mca_common_cuda_stage_three_init(void)
         OBJ_RELEASE(mem_reg);
     }
 
-    /* Create stream for use in ipc asynchronous copies */
-    res = cuFunc.cuStreamCreate(&ipcStream, 0);
-    if (OPAL_UNLIKELY(res != CUDA_SUCCESS)) {
-        opal_show_help("help-mpi-common-cuda.txt", "cuStreamCreate failed",
-                       true, ompi_process_info.nodename, res);
-        return OMPI_ERROR;
-    }
-
     /* Create stream for use in dtoh asynchronous copies */
     res = cuFunc.cuStreamCreate(&dtohStream, 0);
     if (OPAL_UNLIKELY(res != CUDA_SUCCESS)) {
@@ -819,9 +810,6 @@ void mca_common_cuda_fini(void)
         if (NULL != cuda_event_dtoh_frag_array) {
             free(cuda_event_dtoh_frag_array);
         }
-        if ((NULL != ipcStream) && ctx_ok) {
-            cuFunc.cuStreamDestroy(ipcStream);
-        }
         if ((NULL != dtohStream) && ctx_ok) {
             cuFunc.cuStreamDestroy(dtohStream);
         }
@@ -929,6 +917,28 @@ void mca_common_cuda_unregister(void *ptr, char *msg) {
 }
 
 #if OPAL_CUDA_SUPPORT_41
+/*
+ * CUDA stream management
+ */
+void cuda_streamcreate(void** streamptr)
+{
+    CUstream* stream_p = (CUstream*)malloc(sizeof(CUstream));
+    int res = cuFunc.cuStreamCreate(stream_p, CU_STREAM_NON_BLOCKING);
+    if (OPAL_UNLIKELY(res != CUDA_SUCCESS)) {
+        opal_show_help("help-mpi-common-cuda.txt", "cuStreamCreate", true, res);
+    }
+    *streamptr = (void*)stream_p;
+}
+void cuda_streamdestroy(void* stream)
+{
+    CUstream* stream_p = (CUstream*)stream;
+    int res = cuFunc.cuStreamDestroy(*stream_p);
+    if (OPAL_UNLIKELY(res != CUDA_SUCCESS)) {
+        opal_show_help("help-mpi-common-cuda.txt", "cuStreamDestroy", true, res);
+    }
+    free(stream_p);
+}
+
 /*
  * Get the memory handle of a local section of memory that can be sent
  * to the remote size so it can access the memory.  This is the
@@ -1192,10 +1202,11 @@ void mca_common_wait_stream_synchronize(mca_mpool_common_cuda_reg_t *rget_reg)
  * be queried to indicate the copy has completed.
  */
 int mca_common_cuda_memcpy(void *dst, void *src, size_t amount, char *msg, 
-                           struct mca_btl_base_descriptor_t *frag, int *done)
+                           struct mca_btl_base_descriptor_t *frag, int *done, void* stream)
 {
     CUresult result;
     int iter;
+    CUstream ipcStream = *((CUstream*)stream);
 
     /* First make sure there is room to store the event.  If not, then
      * return an error.  The error message will tell the user to try and

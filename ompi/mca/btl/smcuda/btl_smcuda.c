@@ -717,6 +717,15 @@ int mca_btl_smcuda_del_procs(
     struct ompi_proc_t **procs,
     struct mca_btl_base_endpoint_t **peers)
 {
+#if OPAL_CUDA_SUPPORT
+    size_t p;
+    for (p=0; p<nprocs; p++) {
+        struct mca_btl_base_endpoint_t *ep = peers[p];
+        if (ep->ipcstate == IPC_ACKED) {
+            cuda_streamdestroy(ep->stream);
+	}
+    }
+#endif
     return OMPI_SUCCESS;
 }
 
@@ -1162,7 +1171,7 @@ int mca_btl_smcuda_get_cuda(struct mca_btl_base_module_t* btl,
     rc = mca_common_cuda_memcpy((void *)(uintptr_t) dst_seg->base.seg_addr.lval,
 				remote_memory_address, dst_seg->base.seg_len,
 				"mca_btl_smcuda_get", (mca_btl_base_descriptor_t *)frag,
-				&done);
+				&done, ep->stream);
     if (OMPI_SUCCESS != rc) {
         /* Out of resources can be handled by upper layers. */
         if (OMPI_ERR_OUT_OF_RESOURCE != rc) {
