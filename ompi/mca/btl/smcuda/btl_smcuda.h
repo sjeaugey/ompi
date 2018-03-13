@@ -202,6 +202,7 @@ struct mca_btl_smcuda_component_t {
     char *sm_mpool_rndv_file_name;
     char *sm_ctl_file_name;
     char *sm_rndv_file_name;
+    int disable_inter_socket;
 #if OPAL_CUDA_SUPPORT
     int cuda_ipc_verbose;
     int cuda_ipc_output;

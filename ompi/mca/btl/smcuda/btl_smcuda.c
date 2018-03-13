@@ -683,6 +683,21 @@ int mca_btl_smcuda_add_procs(
         mca_btl_smcuda_component.mem_nodes[j] = mca_btl_smcuda_component.shm_mem_nodes[j];
     }
 
+    if (mca_btl_smcuda_component.disable_inter_socket == 1) {
+        /* disable smcuda for peers on a different NUMA node.
+         * since we don't want to disturb the rest of the code, we don't renumber
+         * smp ranks and change everything -- just update the reachability and free the endpoint. */
+        for(proc = 0; proc < (int32_t)nprocs; proc++) {
+            if (peers[proc] && mca_btl_smcuda_component.shm_mem_nodes[peers[proc]->peer_smp_rank] != mca_btl_smcuda_component.shm_mem_nodes[my_smp_rank]) {
+                return_code = opal_bitmap_clear_bit(reachability, proc);
+                if(OPAL_SUCCESS != return_code)
+                    goto CLEANUP;
+		free(peers[proc]);
+		peers[proc] = NULL;
+            }
+        }
+    }
+
     /* update the local smp process count */
     mca_btl_smcuda_component.num_smp_procs += n_local_procs;
 

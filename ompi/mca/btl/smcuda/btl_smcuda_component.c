@@ -165,6 +165,9 @@ static int smcuda_register(void)
     /* default number of extra procs to allow for future growth */
     mca_btl_smcuda_param_register_int("sm_extra_procs", 0, OPAL_INFO_LVL_9, &mca_btl_smcuda_component.sm_extra_procs);
 
+    /* Permit to disable smcuda between sockets. Can be better to use IB in some hardware configurations. */
+    mca_btl_smcuda_param_register_int("disable_inter_socket", 0, OPAL_INFO_LVL_4,&mca_btl_smcuda_component.disable_inter_socket);
+
 #if OPAL_CUDA_SUPPORT
     /* Lower priority when CUDA support is not requested */
     if (ompi_mpi_cuda_support) {
